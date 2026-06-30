@@ -1,21 +1,19 @@
 <?php
 
-namespace App\Events;
+namespace Nakanakaii\OtpService\Events;
 
-use App\Models\OtpVerification;
-use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Nakanakaii\OtpService\Models\OtpVerification;
 
 class OtpRequested
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, SerializesModels;
 
-    public $otpVerification;
-
-    public function __construct(OtpVerification $otpVerification)
-    {
-        $this->otpVerification = $otpVerification;
-    }
+    public function __construct(
+        public readonly Model $otpable,
+        public readonly string $code,
+        public readonly OtpVerification $otpVerification,
+    ) {}
 }
-
