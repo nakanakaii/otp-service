@@ -1,31 +1,45 @@
 <?php
 
-namespace App\Models;
+namespace Nakanakaii\OtpService\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class OtpVerification extends Model
 {
     protected $fillable = [
-        'user_id',
-        'otp',
+        'otpable_type',
+        'otpable_id',
+        'code',
         'expires_at',
-        'verified'
+        'verified',
+        'attempts',
     ];
 
     protected $casts = [
         'expires_at' => 'datetime',
-        'verified' => 'boolean'
+        'verified' => 'boolean',
+        'attempts' => 'integer',
     ];
 
-    public function user()
+    public function otpable(): MorphTo
     {
-        return $this->belongsTo(User::class);
+        return $this->morphTo();
     }
 
     public function scopeValid($query)
     {
-        return $query->where('used', false)
+        return $query->where('verified', false)
             ->where('expires_at', '>', now());
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at->isPast();
+    }
+
+    public function hasExceededMaxAttempts(int $maxAttempts): bool
+    {
+        return $this->attempts >= $maxAttempts;
     }
 }
