@@ -1,0 +1,18 @@
+{
+    "name": "nakanakaii/otp_service",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Nakanakaii\\OtpService\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ahmed Dahan",
+            "email": "ahmed.dahan.ali@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {}
+}
