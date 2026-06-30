@@ -1,20 +1,22 @@
 <?php
 
-namespace App\Console\Commands;
+namespace Nakanakaii\OtpService\Console\Commands;
 
-use App\Models\OtpVerification;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Nakanakaii\OtpService\Models\OtpVerification;
 
 class CleanExpiredOtps extends Command
 {
     protected $signature = 'otp:clean';
-    
-    protected $description = 'Clean up expired OTP verification records';
-    
-    public function handle()
+
+    protected $description = 'Delete expired OTP verification records';
+
+    public function handle(): int
     {
-        $deleted = OtpVerification::where('expires_at', '<', Carbon::now())->delete();
+        $deleted = OtpVerification::where('expires_at', '<', now())->delete();
+
         $this->info("Deleted {$deleted} expired OTP records.");
+
+        return self::SUCCESS;
     }
 }
