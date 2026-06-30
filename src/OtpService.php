@@ -25,11 +25,7 @@ class OtpService
             'attempts' => 0,
         ]);
 
-        OtpRequested::dispatch(
-            otpable: $model,
-            code: $code,
-            otpVerification: $otpVerification,
-        );
+        OtpRequested::dispatch($model, $code, $otpVerification);
 
         return $otpVerification;
     }
