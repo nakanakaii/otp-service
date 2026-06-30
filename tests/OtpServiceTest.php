@@ -196,4 +196,60 @@ class OtpServiceTest extends TestCase
 
         $this->assertFalse($this->service->hasPending($user));
     }
+
+    public function test_generate_invalidates_previous_otps(): void
+    {
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $first = $this->service->generate($user);
+        $second = $this->service->generate($user);
+
+        $this->assertDatabaseHas('otp_verifications', [
+            'id' => $first->getKey(),
+            'verified' => true,
+        ]);
+
+        $this->assertDatabaseHas('otp_verifications', [
+            'id' => $second->getKey(),
+            'verified' => false,
+        ]);
+    }
+
+    public function test_verify_does_not_increment_attempts_on_verified_otp(): void
+    {
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+        $otp = $this->service->generate($user);
+
+        $this->service->verify($user, $otp->code);
+
+        $this->service->verify($user, $otp->code);
+
+        $otp->refresh();
+        $this->assertEquals(1, $otp->attempts);
+    }
+
+    public function test_invalidate_clears_valid_otps(): void
+    {
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $otp = $this->service->generate($user);
+
+        $this->service->invalidate($user);
+
+        $this->assertDatabaseHas('otp_verifications', [
+            'id' => $otp->getKey(),
+            'verified' => true,
+        ]);
+
+        $this->assertFalse($this->service->hasPending($user));
+    }
+
+    public function test_verify_returns_false_when_no_otp_exists(): void
+    {
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $result = $this->service->verify($user, '123456');
+
+        $this->assertFalse($result);
+    }
 }

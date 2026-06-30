@@ -11,6 +11,8 @@ class OtpService
 {
     public function generate(Model $model): OtpVerification
     {
+        $this->invalidate($model);
+
         $length = Config::get('otp.length', 6);
         $expirationMinutes = Config::get('otp.expiration_minutes', 5);
 
@@ -58,6 +60,15 @@ class OtpService
         $otpVerification->update(['verified' => true]);
 
         return true;
+    }
+
+    public function invalidate(Model $model): void
+    {
+        OtpVerification::query()
+            ->where('otpable_type', get_class($model))
+            ->where('otpable_id', $model->getKey())
+            ->valid()
+            ->update(['verified' => true]);
     }
 
     public function hasPending(Model $model): bool
