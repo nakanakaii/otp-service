@@ -8,7 +8,7 @@ A reusable Laravel package for OTP verification with polymorphic model support a
 ## Requirements
 
 - PHP 8.1+
-- Laravel 10, 11, or 12
+- Laravel 9+
 
 ## Installation
 
