@@ -19,8 +19,7 @@ composer require nakanakaii/otp-service
 Publish the config and migration:
 
 ```bash
-php artisan vendor:publish --tag=otp-config
-php artisan vendor:publish --tag=otp-migrations
+php artisan vendor:publish --tag=otp-config,otp-migrations
 ```
 
 Run the migration:
@@ -57,7 +56,7 @@ class SendOtpNotification
 }
 ```
 
-### 2. Register the Listener
+### 2. Register the Listener (Laravel < 11)
 
 In your `EventServiceProvider`:
 
@@ -124,6 +123,44 @@ if (Otp::hasPending($user)) {
 }
 ```
 
+### Rate Limiting
+
+The package supports opt-in rate limiting using Laravel's cache-backed `RateLimiter`. When enabled, each model instance is limited to a configurable number of OTP generations within a time window.
+
+Enable in your `.env`:
+
+```env
+OTP_RATE_LIMIT_ENABLED=true
+OTP_RATE_LIMIT_MAX=3
+OTP_RATE_LIMIT_DECAY=1
+```
+
+When the limit is hit, `generate()` throws `OtpThrottledException`:
+
+```php
+use Nakanakaii\OtpService\Exceptions\OtpThrottledException;
+
+try {
+    $otp = Otp::generate($user);
+} catch (OtpThrottledException $e) {
+    $seconds = $e->getSecondsUntilAvailable();
+    // "Try again in 45 seconds."
+}
+```
+
+You can also check the cooldown without triggering the exception:
+
+```php
+$seconds = Otp::availableIn($user); // 0 if not throttled
+```
+
+Rate limiting can be scoped by a custom identifier (e.g., IP address) instead of the model:
+
+```php
+Otp::generate($user, 'ip:192.168.1.1');
+Otp::availableIn($user, 'ip:192.168.1.1');
+```
+
 ## Configuration
 
 ```php
@@ -132,21 +169,30 @@ return [
     'length'              => env('OTP_LENGTH', 6),
     'expiration_minutes'  => env('OTP_EXPIRATION_MINUTES', 5),
     'max_attempts'        => env('OTP_MAX_ATTEMPTS', 5),
+
+    'rate_limit' => [
+        'enabled'       => env('OTP_RATE_LIMIT_ENABLED', false),
+        'max_attempts'  => env('OTP_RATE_LIMIT_MAX', 3),
+        'decay_minutes' => env('OTP_RATE_LIMIT_DECAY', 1),
+    ],
 ];
 ```
 
 | Option | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `length` | `6` | Number of digits in the OTP code |
 | `expiration_minutes` | `5` | Minutes until an OTP expires |
 | `max_attempts` | `5` | Verification attempts before invalidation |
+| `rate_limit.enabled` | `false` | Enable/disable OTP request rate limiting |
+| `rate_limit.max_attempts` | `3` | Max OTP generations per time window |
+| `rate_limit.decay_minutes` | `1` | Time window in minutes |
 
 ## Database
 
 The `otp_verifications` table structure:
 
 | Column | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `id` | `bigint` | Primary key |
 | `otpable_type` | `string` | Polymorphic model class |
 | `otpable_id` | `unsignedBigInteger` | Polymorphic model ID |
@@ -156,6 +202,23 @@ The `otp_verifications` table structure:
 | `attempts` | `integer` | Number of verification attempts |
 | `created_at` | `timestamp` | Created timestamp |
 | `updated_at` | `timestamp` | Updated timestamp |
+
+## Contributing
+
+Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+
+## Security/Vulnerabilities
+
+If you discover any security-related issues, please [create an issue](https://github.com/nakanakaii/otp-service/issues/new?template=security-vulnerability.md).
+
+## Found a bug or have a suggestion?
+
+If you encounter any issues or have any suggestions or find any incorrect or missing data, please feel free to [open an issue](https://github.com/nakanakaii/otp-service/issues/new/choose) on GitHub.
+
+## Credits
+
+- [Ahmed Dahan](https://github.com/nakanakaii)
+- [All Contributors](contributors)
 
 ## License
 

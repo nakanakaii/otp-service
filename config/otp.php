@@ -36,4 +36,20 @@ return [
 
     'max_attempts' => env('OTP_MAX_ATTEMPTS', 5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiting
+    |--------------------------------------------------------------------------
+    |
+    | Limits how often an OTP can be generated per model instance. Uses
+    | Laravel's cache-backed RateLimiter. Disabled by default.
+    |
+    */
+
+    'rate_limit' => [
+        'enabled' => env('OTP_RATE_LIMIT_ENABLED', false),
+        'max_attempts' => env('OTP_RATE_LIMIT_MAX', 3),
+        'decay_minutes' => env('OTP_RATE_LIMIT_DECAY', 1),
+    ],
+
 ];

@@ -4,6 +4,7 @@ namespace Nakanakaii\OtpService\Tests;
 
 use Illuminate\Support\Facades\Event;
 use Nakanakaii\OtpService\Events\OtpRequested;
+use Nakanakaii\OtpService\Exceptions\OtpThrottledException;
 use Nakanakaii\OtpService\Models\OtpVerification;
 use Nakanakaii\OtpService\OtpService;
 use Nakanakaii\OtpService\Tests\Models\User;
@@ -251,5 +252,123 @@ class OtpServiceTest extends TestCase
         $result = $this->service->verify($user, '123456');
 
         $this->assertFalse($result);
+    }
+
+    public function test_generate_respects_rate_limit_when_enabled(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => true,
+            'otp.rate_limit.max_attempts' => 2,
+            'otp.rate_limit.decay_minutes' => 1,
+        ]);
+
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $this->service->generate($user);
+        $this->service->generate($user);
+
+        $this->expectException(OtpThrottledException::class);
+
+        $this->service->generate($user);
+    }
+
+    public function test_generate_rate_limit_is_scoped_per_model(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => true,
+            'otp.rate_limit.max_attempts' => 1,
+            'otp.rate_limit.decay_minutes' => 1,
+        ]);
+
+        $user1 = User::create(['name' => 'User One', 'phone' => '1111111111']);
+        $user2 = User::create(['name' => 'User Two', 'phone' => '2222222222']);
+
+        $this->service->generate($user1);
+
+        $this->expectException(OtpThrottledException::class);
+
+        $this->service->generate($user1);
+    }
+
+    public function test_generate_rate_limit_allows_other_models(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => true,
+            'otp.rate_limit.max_attempts' => 1,
+            'otp.rate_limit.decay_minutes' => 1,
+        ]);
+
+        $user1 = User::create(['name' => 'User One', 'phone' => '1111111111']);
+        $user2 = User::create(['name' => 'User Two', 'phone' => '2222222222']);
+
+        $this->service->generate($user1);
+
+        $this->service->generate($user2);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_availableIn_returns_zero_when_not_throttled(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => true,
+        ]);
+
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $this->assertSame(0, $this->service->availableIn($user));
+    }
+
+    public function test_availableIn_returns_positive_when_throttled(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => true,
+            'otp.rate_limit.max_attempts' => 1,
+            'otp.rate_limit.decay_minutes' => 1,
+        ]);
+
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $this->service->generate($user);
+
+        $seconds = $this->service->availableIn($user);
+
+        $this->assertGreaterThan(0, $seconds);
+        $this->assertLessThanOrEqual(60, $seconds);
+    }
+
+    public function test_generate_rate_limit_does_not_apply_when_disabled(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => false,
+            'otp.rate_limit.max_attempts' => 1,
+            'otp.rate_limit.decay_minutes' => 1,
+        ]);
+
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $this->service->generate($user);
+        $this->service->generate($user);
+
+        $this->assertTrue(true);
+    }
+
+    public function test_generate_rate_limit_uses_custom_identifier(): void
+    {
+        config([
+            'otp.rate_limit.enabled' => true,
+            'otp.rate_limit.max_attempts' => 1,
+            'otp.rate_limit.decay_minutes' => 1,
+        ]);
+
+        $user = User::create(['name' => 'Test User', 'phone' => '1234567890']);
+
+        $this->service->generate($user, 'ip:192.168.1.1');
+
+        $this->service->generate($user, 'ip:192.168.1.2');
+
+        $this->expectException(OtpThrottledException::class);
+
+        $this->service->generate($user, 'ip:192.168.1.1');
     }
 }

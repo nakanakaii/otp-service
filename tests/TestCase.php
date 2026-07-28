@@ -27,6 +27,8 @@ abstract class TestCase extends BaseTestCase
             'driver' => 'sqlite',
             'database' => ':memory:',
         ]);
+
+        $app['config']->set('cache.default', 'array');
     }
 
     protected function setUpDatabase(): void

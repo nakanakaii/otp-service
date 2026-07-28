@@ -1,0 +1,7 @@
+version: 1.4
+updates:
+  - dependency-type: composer
+    schedule:
+      frequency: daily
+    open-pull-request: true
+    days: [sat, sun]
